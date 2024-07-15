@@ -23,21 +23,21 @@ Para citar o artigo do SAI-NBEATSx
 
 ## criar ambiente virtual no conda
 
-* conda create --name nbeatsx_epf python=3.7.2
-* conda activate nbeatsx_epf
+- conda create --name nbeatsx_epf python=3.7.2
+- conda activate nbeatsx_epf
 
-* conda install -c anaconda numpy==1.16.1
-* conda install -c anaconda pandas==0.25.2
-* conda install -c conda-forge matplotlib==3.1.1
-* conda install -c anaconda seaborn==0.9.0
-* conda install -c anaconda scipy==1.5.2
+- conda install -c anaconda numpy==1.16.1
+- conda install -c anaconda pandas==0.25.2
+- conda install -c conda-forge matplotlib==3.1.1
+- conda install -c anaconda seaborn==0.9.0
+- conda install -c anaconda scipy==1.5.2
 
-* conda install pytorch torchvision -c pytorch
+- conda install pytorch torchvision -c pytorch
 
-* conda install -c conda-forge jupyterlab
-* conda install -c conda-forge tqdm
-* conda install -c conda-forge hyperopt
-* conda install -c anaconda requests
+- conda install -c conda-forge jupyterlab
+- conda install -c conda-forge tqdm
+- conda install -c conda-forge hyperopt
+- conda install -c anaconda requests
 
 ## Executar sai-nbeats
 
