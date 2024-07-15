@@ -13,11 +13,11 @@ from torch import optim
 from pathlib import Path
 from functools import partial
 
-from src.nbeats.nbeats_model import NBeats, NBeatsBlock, IdentityBasis, TrendBasis, SeasonalityBasis
-from src.nbeats.nbeats_model import ExogenousBasisInterpretable, ExogenousBasisWavenet, ExogenousBasisTCN
-from src.utils.pytorch.ts_loader import TimeSeriesLoader
-from src.utils.pytorch.losses import MAPELoss, MASELoss, SMAPELoss, MSELoss, MAELoss, PinballLoss
-from src.utils.numpy.metrics import mae, pinball_loss
+from nbeats.nbeats_model import NBeats, NBeatsBlock, IdentityBasis, TrendBasis, SeasonalityBasis
+from nbeats.nbeats_model import ExogenousBasisInterpretable, ExogenousBasisWavenet, ExogenousBasisTCN
+from utils.pytorch.ts_loader import TimeSeriesLoader
+from utils.pytorch.losses import MAPELoss, MASELoss, SMAPELoss, MSELoss, MAELoss, PinballLoss
+from utils.numpy.metrics import mae, pinball_loss
 
 def init_weights(module, initialization):
     if type(module) == t.nn.Linear:
@@ -62,6 +62,7 @@ class Nbeats(object):
                  batch_normalization,
                  dropout_prob_theta,
                  dropout_prob_exogenous,
+                 dropout_attention_prob,
                  x_s_n_hidden,
                  learning_rate,
                  lr_decay,
@@ -75,6 +76,8 @@ class Nbeats(object):
                  val_loss,
                  random_seed,
                  seasonality,
+                 n_heads,
+                 embed_dim,
                  device=None):
         super(Nbeats, self).__init__()
         """
@@ -184,6 +187,7 @@ class Nbeats(object):
         self.batch_normalization = batch_normalization
         self.dropout_prob_theta = dropout_prob_theta
         self.dropout_prob_exogenous = dropout_prob_exogenous
+        self.dropout_attention_prob = dropout_attention_prob
         self.x_s_n_hidden = x_s_n_hidden
         self.learning_rate = learning_rate
         self.lr_decay = lr_decay
@@ -203,6 +207,9 @@ class Nbeats(object):
         self.include_var_dict = include_var_dict
         self.t_cols = t_cols
 
+        self.n_heads = n_heads
+        self.embed_dim = embed_dim
+
         if device is None:
             device = 'cuda' if t.cuda.is_available() else 'cpu'
         self.device = device
@@ -211,6 +218,7 @@ class Nbeats(object):
 
     def create_stack(self):
         if self.include_var_dict is not None:
+            print('self.include_var_dict', self.include_var_dict.values())
             x_t_n_inputs = self.output_size * int(sum([len(x) for x in self.include_var_dict.values()]))
 
             # Correction because week_day only adds 1 no output_size
@@ -253,7 +261,13 @@ class Nbeats(object):
                                                    t_cols=self.t_cols,
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout_prob_theta,
-                                                   activation=self.activation)
+                                                   # dropout da atencao
+                                                   dropout_attention_prob=self.dropout_attention_prob,
+                                                   activation=self.activation, 
+                                                   # numero de cabecas de atencao
+                                                   n_heads=self.n_heads,
+                                                   # dimensao do embedding
+                                                   embed_dim=self.embed_dim)
                     elif self.stack_types[i] == 'trend':
                         nbeats_block = NBeatsBlock(x_t_n_inputs = x_t_n_inputs,
                                                    x_s_n_inputs = self.n_x_s,
@@ -268,7 +282,13 @@ class Nbeats(object):
                                                    t_cols=self.t_cols,
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout_prob_theta,
-                                                   activation=self.activation)
+                                                   # dropout da atencao
+                                                   dropout_attention_prob=self.dropout_attention_prob,
+                                                   activation=self.activation,
+                                                   # numero de cabecas de atencao
+                                                   n_heads=self.n_heads,
+                                                   # dimensao do embedding
+                                                   embed_dim=self.embed_dim)
                     elif self.stack_types[i] == 'identity':
                         nbeats_block = NBeatsBlock(x_t_n_inputs = x_t_n_inputs,
                                                    x_s_n_inputs = self.n_x_s,
@@ -282,7 +302,13 @@ class Nbeats(object):
                                                    t_cols=self.t_cols,
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout_prob_theta,
-                                                   activation=self.activation)
+                                                   # dropout da atencao
+                                                   dropout_attention_prob=self.dropout_attention_prob,
+                                                   activation=self.activation,
+                                                    # numero de cabecas de atencao
+                                                   n_heads=self.n_heads,
+                                                    # dimensao do embedding
+                                                   embed_dim=self.embed_dim)
                     elif self.stack_types[i] == 'exogenous':
                         nbeats_block = NBeatsBlock(x_t_n_inputs = x_t_n_inputs,
                                                    x_s_n_inputs = self.n_x_s,
@@ -295,7 +321,13 @@ class Nbeats(object):
                                                    t_cols=self.t_cols,
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout_prob_theta,
-                                                   activation=self.activation)
+                                                   # dropout da atencao
+                                                   dropout_attention_prob=self.dropout_attention_prob,
+                                                   activation=self.activation,
+                                                   # numero de cabecas de atencao
+                                                   n_heads=self.n_heads,
+                                                   # dimensao do embedding
+                                                   embed_dim=self.embed_dim)
                     elif self.stack_types[i] == 'exogenous_tcn':
                         nbeats_block = NBeatsBlock(x_t_n_inputs = x_t_n_inputs,
                                                    x_s_n_inputs = self.n_x_s,
@@ -308,7 +340,13 @@ class Nbeats(object):
                                                    t_cols=self.t_cols,
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout_prob_theta,
-                                                   activation=self.activation)
+                                                   # dropout da atencao
+                                                   dropout_attention_prob=self.dropout_attention_prob,
+                                                   activation=self.activation,
+                                                   # numero de cabecas de atencao
+                                                   n_heads=self.n_heads,
+                                                   # dimensao do embedding
+                                                   embed_dim=self.embed_dim)
                     elif self.stack_types[i] == 'exogenous_wavenet':
                         nbeats_block = NBeatsBlock(x_t_n_inputs = x_t_n_inputs,
                                                    x_s_n_inputs = self.n_x_s,
@@ -321,13 +359,22 @@ class Nbeats(object):
                                                    t_cols=self.t_cols,
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout_prob_theta,
-                                                   activation=self.activation)
+                                                   # dropout da atencao
+                                                   dropout_attention_prob=self.dropout_attention_prob,
+                                                   activation=self.activation,
+                                                   # numero de cabecas de atencao
+                                                   n_heads=self.n_heads,
+                                                   # dimensao do embedding
+                                                   embed_dim=self.embed_dim)
                         self.blocks_regularizer[-1] = 1
                     else:
                         assert 1<0, f'Block type not found!'
                 # Select type of evaluation and apply it to all layers of block
                 init_function = partial(init_weights, initialization=self.initialization)
-                nbeats_block.layers.apply(init_function)
+                #nbeats_block.layers.apply(init_function)
+                nbeats_block.attention.apply(init_function)
+                nbeats_block.dimension_adjustment.apply(init_function)
+                nbeats_block.output_layer.apply(init_function)
                 block_list.append(nbeats_block)
         return block_list
 

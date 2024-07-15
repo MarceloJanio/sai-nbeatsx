@@ -3,7 +3,7 @@ import numpy as np
 import torch as t
 import torch.nn as nn
 from typing import Tuple
-from src.nbeats.tcn import TemporalConvNet
+from nbeats.tcn import TemporalConvNet
 
 def filter_input_vars(insample_y, insample_x_t, outsample_x_t, t_cols, include_var_dict):
     # This function is specific for the EPF task
@@ -61,14 +61,20 @@ class NBeatsBlock(nn.Module):
     N-BEATS block which takes a basis function as an argument.
     """
     def __init__(self, x_t_n_inputs: int, x_s_n_inputs: int, x_s_n_hidden: int, theta_n_dim: int, basis: nn.Module,
-                 n_layers: int, theta_n_hidden: list, include_var_dict, t_cols, batch_normalization: bool, dropout_prob: float, activation: str):
+                 n_layers: int, theta_n_hidden: list, include_var_dict, t_cols, batch_normalization: bool, dropout_prob: float,  dropout_attention_prob: float, activation: str, n_heads: int, embed_dim: int):
         """
         """
         super().__init__()
 
+    
+
         if x_s_n_inputs == 0:
             x_s_n_hidden = 0
         theta_n_hidden = [x_t_n_inputs + x_s_n_hidden] + theta_n_hidden
+
+        print(f'x_t_n_inputs {x_t_n_inputs}')
+        print(f'x_s_n_inputs {x_s_n_inputs}')
+        print(f'theta_n_hidden {theta_n_hidden}')
 
         self.x_s_n_inputs = x_s_n_inputs
         self.x_s_n_hidden = x_s_n_hidden
@@ -76,6 +82,8 @@ class NBeatsBlock(nn.Module):
         self.t_cols = t_cols
         self.batch_normalization = batch_normalization
         self.dropout_prob = dropout_prob
+        # probabilidade de dropout para a atenção
+        self.dropout_attention_prob = dropout_attention_prob
         self.activations = {'relu': nn.ReLU(),
                             'softplus': nn.Softplus(),
                             'tanh': nn.Tanh(),
@@ -83,32 +91,37 @@ class NBeatsBlock(nn.Module):
                             'lrelu': nn.LeakyReLU(),
                             'prelu': nn.PReLU(),
                             'sigmoid': nn.Sigmoid()}
+        
+        # tamanho da dimensão de entrada para a atenção
+        self.embed_dim = embed_dim
+        self.activation = self.activations[activation]
 
-        hidden_layers = []
-        for i in range(n_layers):
+        # Camada para ajustar a dimensão da entrada para a atenção
+        self.dimension_adjustment = nn.Linear(theta_n_hidden[0], self.embed_dim)
 
-            # Batch norm after activation
-            hidden_layers.append(nn.Linear(in_features=theta_n_hidden[i], out_features=theta_n_hidden[i+1]))
-            hidden_layers.append(self.activations[activation])
+        # Camada de atenção
+        self.attention = nn.MultiheadAttention(embed_dim=self.embed_dim, num_heads=n_heads, dropout=self.dropout_attention_prob, batch_first=True)
 
-            if self.batch_normalization:
-                hidden_layers.append(nn.BatchNorm1d(num_features=theta_n_hidden[i+1]))
+        # Mais um dropou depende do hyperopt
+        if self.dropout_prob > 0:
+            self.dropout = nn.Dropout(p=self.dropout_prob)
 
-            if self.dropout_prob>0:
-                hidden_layers.append(nn.Dropout(p=self.dropout_prob))
+        # Normalização também depende do hyperopt
+        if self.batch_normalization:
+            self.layer_norm = nn.LayerNorm(self.embed_dim)
 
-        output_layer = [nn.Linear(in_features=theta_n_hidden[-1], out_features=theta_n_dim)]
-        layers = hidden_layers + output_layer
-
+        # Camada de saída
+        self.output_layer = nn.Linear(in_features=self.embed_dim, out_features=theta_n_dim)
+        
         # x_s_n_inputs is computed with data, x_s_n_hidden is provided by user, if 0 no statics are used
         if (self.x_s_n_inputs > 0) and (self.x_s_n_hidden > 0):
             self.static_encoder = _StaticFeaturesEncoder(in_features=x_s_n_inputs, out_features=x_s_n_hidden)
-        self.layers = nn.Sequential(*layers)
+        self.layers = nn.Sequential()
         self.basis = basis
 
     def forward(self, insample_y: t.Tensor, insample_x_t: t.Tensor,
                 outsample_x_t: t.Tensor, x_s: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
-
+        
         if self.include_var_dict is not None:
             insample_y = filter_input_vars(insample_y=insample_y, insample_x_t=insample_x_t, outsample_x_t=outsample_x_t,
                                            t_cols=self.t_cols, include_var_dict=self.include_var_dict)
@@ -118,8 +131,40 @@ class NBeatsBlock(nn.Module):
             x_s = self.static_encoder(x_s)
             insample_y = t.cat((insample_y, x_s), 1)
 
-        # Compute local projection weights and projection
-        theta = self.layers(insample_y)
+        
+        # mapeamento para a dimensão de entrada da atenção
+        insample_y = self.dimension_adjustment(insample_y)
+
+        # ativação
+        insample_y = self.activation(insample_y)
+
+        # ajuste de dimensão para a atenção
+        insample_y = insample_y.unsqueeze(1) 
+
+        # autoatenção
+        attn_output, _ = self.attention(insample_y, insample_y, insample_y)
+
+        # dropout
+        if self.dropout_prob > 0:
+            attn_output = self.dropout(attn_output)
+
+        # skip connection
+        insample_y = insample_y + attn_output
+
+        # normalização
+        if(self.batch_normalization):
+            insample_y = self.layer_norm(insample_y)
+
+        # ajuste de dimensão para a saída
+        insample_y = insample_y.squeeze(1) 
+
+        # ativação
+        insample_y = self.activation(insample_y)
+
+        # saída
+        theta = self.output_layer(insample_y)
+
+        # forecast e backcast
         backcast, forecast = self.basis(theta, insample_x_t, outsample_x_t)
 
         return backcast, forecast

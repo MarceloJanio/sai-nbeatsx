@@ -5,7 +5,7 @@ import multiprocessing as mp
 from math import sqrt
 from functools import partial
 
-from src.utils.pytorch.losses import divide_no_nan
+from utils.pytorch.losses import divide_no_nan
 from scipy import stats
 from scipy.stats.distributions import chi2
 

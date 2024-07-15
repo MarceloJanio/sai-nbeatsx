@@ -3,7 +3,7 @@ import pandas as pd
 import random
 import torch as t
 import copy
-from src.utils.pytorch.ts_dataset import TimeSeriesDataset
+from utils.pytorch.ts_dataset import TimeSeriesDataset
 from collections import defaultdict
 
 

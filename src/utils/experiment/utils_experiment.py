@@ -13,11 +13,11 @@ import torch as t
 from datetime import datetime
 from hyperopt import STATUS_OK
 
-from src.utils.numpy.metrics import rmae, mae, mape, smape, rmse
-from src.utils.data.utils import Scaler
-from src.utils.pytorch.ts_dataset import TimeSeriesDataset
-from src.utils.pytorch.ts_loader import TimeSeriesLoader
-from src.nbeats.nbeats import Nbeats
+from utils.numpy.metrics import rmae, mae, mape, smape, rmse
+from utils.data.utils import Scaler
+from utils.pytorch.ts_dataset import TimeSeriesDataset
+from utils.pytorch.ts_loader import TimeSeriesLoader
+from nbeats.nbeats import Nbeats
 
 
 def transform_data(Y_df, X_df, mask, normalizer_y, normalizer_x):
@@ -252,6 +252,9 @@ def run_val_nbeatsx(hyperparameters, Y_df, X_df, data_augmentation, random_valid
                    batch_normalization = mc['batch_normalization'],
                    dropout_prob_theta=mc['dropout_prob_theta'],
                    dropout_prob_exogenous=mc['dropout_prob_exogenous'],
+
+                   # Dropout da attention
+                   dropout_attention_prob=mc['dropout_attention_prob'],
                    learning_rate=float(mc['learning_rate']),
                    lr_decay=float(mc['lr_decay']),
                    n_lr_decay_steps=float(mc['n_lr_decay_steps']),
@@ -263,7 +266,12 @@ def run_val_nbeatsx(hyperparameters, Y_df, X_df, data_augmentation, random_valid
                    loss_hypar=mc['loss_hypar'],
                    val_loss=mc['val_loss'],
                    seasonality=int(mc['seasonality']),
-                   random_seed=int(mc['random_seed']))
+                   random_seed=int(mc['random_seed']),
+                   # Nº de cabeças de atenção
+                   n_heads=int(mc['n_heads']), 
+                   # Dimensão do embedding
+                   embed_dim=int(mc['embed_dim'])
+                   )
 
     # Fit model
     model.fit(train_ts_loader=train_ts_loader, val_ts_loader=val_ts_loader, n_iterations=mc['n_iterations'], eval_steps=mc['eval_steps'])
@@ -409,6 +417,7 @@ def run_test_nbeatsx(mc, Y_df, X_df, len_outsample):
                            t_cols=mc['t_cols'],
                            batch_normalization = mc['batch_normalization'],
                            dropout_prob_theta=mc['dropout_prob_theta'],
+                           dropout_attention_prob=mc['dropout_attention_prob'],
                            dropout_prob_exogenous=mc['dropout_prob_exogenous'],
                            learning_rate=float(mc['learning_rate']),
                            lr_decay=float(mc['lr_decay']),
@@ -421,7 +430,10 @@ def run_test_nbeatsx(mc, Y_df, X_df, len_outsample):
                            loss_hypar=mc['loss_hypar'],
                            val_loss=mc['val_loss'],
                            seasonality=int(mc['seasonality']),
-                           random_seed=int(mc['random_seed']))
+                           random_seed=int(mc['random_seed']),
+                           n_heads=int(mc['n_heads']),
+                           embed_dim=int(mc['embed_dim'])
+                           )
 
             model.fit(train_ts_loader=train_ts_loader, val_ts_loader=val_ts_loader,
                       n_iterations=mc['n_iterations'], eval_steps=mc['eval_steps'])

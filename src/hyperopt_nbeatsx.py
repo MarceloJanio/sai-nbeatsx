@@ -12,14 +12,16 @@ from datetime import datetime
 from functools import partial
 from hyperopt import fmin, tpe, hp, Trials, STATUS_OK
 
-from src.utils.experiment.utils_experiment import run_val_nbeatsx, run_test_nbeatsx
-from src.utils.data.datasets.epf import EPF, EPFInfo
+from utils.experiment.utils_experiment import run_val_nbeatsx, run_test_nbeatsx
+from utils.data.datasets.epf import EPF, EPFInfo
 
+# Inclusão do dataset brasileiro
 TEST_DATE = {'NP': '2016-12-27',
              'PJM':'2016-12-27',
              'BE':'2015-01-04',
              'FR': '2015-01-04',
-             'DE':'2016-01-04'}
+             'DE':'2016-01-04',
+             'BR':'2020-01-04'}
 
 def parse_trials(trials):
     """
@@ -66,6 +68,9 @@ def get_experiment_space(args):
                 'exogenous_n_channels': hp.quniform('exogenous_n_channels', 1, 10, 1),
                 'batch_normalization': hp.choice('batch_normalization', [True, False]),
                 'dropout_prob_theta': hp.uniform('dropout_prob_theta', 0, 1),
+
+                # Probabilidade de dropout para as atenções
+                'dropout_attention_prob': hp.uniform('dropout_attention_prob', 0, 0.1),
                 'dropout_prob_exogenous': hp.uniform('dropout_prob_exogenous', 0, 0.5),
                 'learning_rate': hp.loguniform('learning_rate', np.log(5e-4), np.log(0.01)),
                 'lr_decay': hp.choice('lr_decay', [0.5]),
@@ -91,7 +96,13 @@ def get_experiment_space(args):
                 'incl_ex2_1': hp.choice('incl_ex2_1', [True, False]),
                 'incl_ex2_7': hp.choice('incl_ex2_7', [True, False]),
                 'incl_day': hp.choice('incl_day', [True, False]),
-                'n_val_weeks': hp.choice('n_val_weeks', [args.n_val_weeks])}
+                'n_val_weeks': hp.choice('n_val_weeks', [args.n_val_weeks]),
+
+                # Nº de cabeças de atenção
+                'n_heads': hp.choice('n_heads', [2, 4, 8, 12, 16]),
+                # Dimensão do embedding
+                'embed_dim': hp.choice('embed_dim', [96, 144, 240, 288, 384])
+                }
     if args.space == 'nbeats_x_interpretable':
         space = {'initialization':  hp.choice('initialization', ['orthogonal', 'he_normal', 'glorot_normal']),
                  'activation': hp.choice('activation', ['softplus','selu','prelu','sigmoid']),
@@ -108,6 +119,9 @@ def get_experiment_space(args):
                 'exogenous_n_channels': hp.quniform('exogenous_n_channels', 1, 10, 1),
                 'batch_normalization': hp.choice('batch_normalization', [True, False]),
                 'dropout_prob_theta': hp.uniform('dropout_prob_theta', 0, 1),
+                
+                # Probabilidade de dropout para as atenções
+                'dropout_attention_prob': hp.uniform('dropout_attention_prob', 0, 0.1),
                 'dropout_prob_exogenous': hp.uniform('dropout_prob_exogenous', 0, 0.5),
                 'learning_rate': hp.loguniform('learning_rate', np.log(5e-4), np.log(0.1)),
                 'lr_decay': hp.choice('lr_decay', [0.5]),
@@ -133,7 +147,13 @@ def get_experiment_space(args):
                 'incl_ex2_1': hp.choice('incl_ex2_1', [True, False]),
                 'incl_ex2_7': hp.choice('incl_ex2_7', [True, False]),
                 'incl_day': hp.choice('incl_day', [True, False]),
-                'n_val_weeks': hp.choice('n_val_weeks', [args.n_val_weeks])}
+                'n_val_weeks': hp.choice('n_val_weeks', [args.n_val_weeks]),
+
+                # Nº de cabeças de atenção
+                'n_heads': hp.choice('n_heads', [1, 2, 4, 8, 16]),
+                # Dimensão do embedding
+                'embed_dim': hp.choice('embed_dim', [96, 144, 240, 288, 384])
+                }
     return space
 
 def main(args):

@@ -44,9 +44,17 @@ class DE:
     test_date: str = '2016-01-04'
     name: str = 'DE'
 
+# inclusão do grupo BR
+@dataclass
+class BR:
+    test_date: str = '2020-01-04'
+    name: str = 'BR'
+    
+
 # Cell
-EPFInfo = Info(groups=('NP', 'PJM', 'BE', 'FR', 'DE'),
-               class_groups=(NP, PJM, BE, FR, DE))
+# inclusão do grupo BR
+EPFInfo = Info(groups=('NP', 'PJM', 'BE', 'FR', 'DE', 'BR'),
+               class_groups=(NP, PJM, BE, FR, DE, BR))
 
 # Cell
 class EPF:
