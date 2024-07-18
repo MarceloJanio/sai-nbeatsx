@@ -18,6 +18,10 @@ Para citar o artigo do SAI-NBEATSx
 
 (aguardando resultado da submissão)
 
+# Erros ou bugs
+
+Caso tenha algum erro ou dúvida mande-me um e-mail: marcelojanio@ufpi.edu.br ou cadastre uma issue.
+
 # Intruções
 
 
